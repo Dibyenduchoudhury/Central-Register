@@ -32,6 +32,22 @@
 
         <button type="submit">Submit</button>
     </form>
+
+    <h3>Saved Files</h3>
+    <table id="file-table">
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>File No</th>
+                <th>Issue Date</th>
+                <th>Dealing Assistant</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
     <h3>File Details from URL:</h3>
     <p>File Name: <span id="fileNameDisplay"></span></p>
     <p>File No: <span id="fileNoDisplay"></span></p>
@@ -40,73 +56,42 @@
     <p>Details: <span id="detailsDisplay"></span></p>
 
     <script>
-        const repoOwner = "Dibyenduchoudhuy";  // Change to your GitHub username
-        const repoName = "Central-Register"; 
+        const repoOwner = "Dibyenduchoudhury";  // Your GitHub username
+        const repoName = "Central-Register";
         const filePath = "files.json";
         const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
-        
-        document.getElementById('file-form').addEventListener('submit', async function (event) {
-            event.preventDefault();
 
-            const fileName = document.getElementById('fileName').value;
-            const fileNo = document.getElementById('fileNo').value;
-            const issueDate = document.getElementById('issueDate').value;
-            const dealingAssistant = document.getElementById('dealingAssistant').value;
-            const details = document.getElementById('details').value;
-
-            const fileData = { fileName, fileNo, issueDate, dealingAssistant, details };
-
-            try {
-                // Fetch existing data
-                const response = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github.v3+json' } });
-
-                if (!response.ok) throw new Error('Failed to fetch file from GitHub');
-
-                const data = await response.json();
-                const sha = data.sha;  // File SHA needed for updates
-                const content = JSON.parse(atob(data.content));  // Decode Base64 content
-
-                content.push(fileData);  // Add new file details
-                const updatedContent = btoa(JSON.stringify(content));  // Encode to Base64
-
-                // Update GitHub file
-                const updateResponse = await fetch(apiUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer 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`,  // Secure this token
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: 'Update file details',
-                        content: updatedContent,
-                        sha: sha
-                    })
-                });
-
-                if (!updateResponse.ok) throw new Error('Failed to update GitHub file');
-
-                addFileToTable(fileData);
-                this.reset();  // Reset form
-                alert('File details successfully added!');
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while saving file details.');
-            }
-        });
-
+        // Fetch and display file data
         async function loadFileData() {
             try {
-                const response = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github.v3+json' } });
-
-                if (!response.ok) throw new Error('Failed to fetch data');
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
 
                 const data = await response.json();
-                const files = JSON.parse(atob(data.content));  // Decode Base64 content
+                const decodedContent = atob(data.content).trim(); // Decode Base64 Content
 
-                files.forEach(addFileToTable);
+                if (!decodedContent) {
+                    console.warn("files.json is empty!");
+                    return;
+                }
+
+                let files = [];
+                try {
+                    files = JSON.parse(decodedContent);
+                } catch (error) {
+                    console.error("JSON Parsing Error:", error);
+                    alert("Error parsing JSON data.");
+                    return;
+                }
+
+                console.log("Parsed File Data:", files);
+
+                // Display in Table
+                files.forEach(file => addFileToTable(file));
+
             } catch (error) {
-                console.error('Error loading files:', error);
+                console.error("Fetch Error:", error);
+                alert("An error occurred while fetching file data.");
             }
         }
 
@@ -123,19 +108,13 @@
 
         window.onload = function () {
             const urlParams = new URLSearchParams(window.location.search);
-            const fileName = urlParams.get("fileName") || "N/A";
-            const fileNo = urlParams.get("fileNo") || "N/A";
-            const issueDate = urlParams.get("issueDate") || "N/A";
-            const dealingAssistant = urlParams.get("dealingAssistant") || "N/A";
-            const details = urlParams.get("details") || "N/A";
+            document.getElementById("fileNameDisplay").textContent = urlParams.get("fileName") || "N/A";
+            document.getElementById("fileNoDisplay").textContent = urlParams.get("fileNo") || "N/A";
+            document.getElementById("issueDateDisplay").textContent = urlParams.get("issueDate") || "N/A";
+            document.getElementById("dealingAssistantDisplay").textContent = urlParams.get("dealingAssistant") || "N/A";
+            document.getElementById("detailsDisplay").textContent = urlParams.get("details") || "N/A";
 
-            document.getElementById("fileNameDisplay").textContent = fileName;
-            document.getElementById("fileNoDisplay").textContent = fileNo;
-            document.getElementById("issueDateDisplay").textContent = issueDate;
-            document.getElementById("dealingAssistantDisplay").textContent = dealingAssistant;
-            document.getElementById("detailsDisplay").textContent = details;
-
-            loadFileData();  // Load and display stored files in table
+            loadFileData();
         };
     </script>
 </body>
