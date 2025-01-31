@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "id": 1,
+    "name": "Sample File",
+    "type": "text",
+    "size": "1KB"
+  }
+]
