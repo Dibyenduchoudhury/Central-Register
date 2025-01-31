@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Management System</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h2>File Management System</h2>
+
+    <form id="file-form">
+        <label for="fileName">File Name:</label>
+        <input type="text" id="fileName" name="fileName" required><br><br>
+
+        <label for="fileNo">File No:</label>
+        <input type="text" id="fileNo" name="fileNo" required><br><br>
+
+        <label for="issueDate">Issue Date:</label>
+        <input type="date" id="issueDate" name="issueDate" required><br><br>
+
+        <label for="dealingAssistant">Dealing Assistant:</label>
+        <input type="text" id="dealingAssistant" name="dealingAssistant" required><br><br>
+
+        <label for="details">Details:</label>
+        <input type="text" id="details" name="details" required><br><br>
+
+        <button type="submit">Submit</button>
+    </form>
+
+    <h3>Saved Files</h3>
+    <table id="file-table">
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>File No</th>
+                <th>Issue Date</th>
+                <th>Dealing Assistant</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <h3>File Details from URL:</h3>
+    <p>File Name: <span id="fileNameDisplay"></span></p>
+    <p>File No: <span id="fileNoDisplay"></span></p>
+    <p>Issue Date: <span id="issueDateDisplay"></span></p>
+    <p>Dealing Assistant: <span id="dealingAssistantDisplay"></span></p>
+    <p>Details: <span id="detailsDisplay"></span></p>
+
+    <script>
+        const repoOwner = "Dibyendchoudhuy";  // Change to your GitHub username
+        const repoName = "Central-Register"; 
+        const filePath = "files.json";
+        const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+        
+        document.getElementById('file-form').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const fileName = document.getElementById('fileName').value;
+            const fileNo = document.getElementById('fileNo').value;
+            const issueDate = document.getElementById('issueDate').value;
+            const dealingAssistant = document.getElementById('dealingAssistant').value;
+            const details = document.getElementById('details').value;
+
+            const fileData = { fileName, fileNo, issueDate, dealingAssistant, details };
+
+            try {
+                // Fetch existing data
+                const response = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github.v3+json' } });
+
+                if (!response.ok) throw new Error('Failed to fetch file from GitHub');
+
+                const data = await response.json();
+                const sha = data.sha;  // File SHA needed for updates
+                const content = JSON.parse(atob(data.content));  // Decode Base64 content
+
+                content.push(fileData);  // Add new file details
+                const updatedContent = btoa(JSON.stringify(content));  // Encode to Base64
+
+                // Update GitHub file
+                const updateResponse = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer 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`,  // Secure this token
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'Update file details',
+                        content: updatedContent,
+                        sha: sha
+                    })
+                });
+
+                if (!updateResponse.ok) throw new Error('Failed to update GitHub file');
+
+                addFileToTable(fileData);
+                this.reset();  // Reset form
+                alert('File details successfully added!');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while saving file details.');
+            }
+        });
+
+        async function loadFileData() {
+            try {
+                const response = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github.v3+json' } });
+
+                if (!response.ok) throw new Error('Failed to fetch data');
+
+                const data = await response.json();
+                const files = JSON.parse(atob(data.content));  // Decode Base64 content
+
+                files.forEach(addFileToTable);
+            } catch (error) {
+                console.error('Error loading files:', error);
+            }
+        }
+
+        function addFileToTable(fileData) {
+            const table = document.getElementById('file-table').getElementsByTagName('tbody')[0];
+            const newRow = table.insertRow();
+
+            newRow.insertCell(0).innerText = fileData.fileName;
+            newRow.insertCell(1).innerText = fileData.fileNo;
+            newRow.insertCell(2).innerText = fileData.issueDate;
+            newRow.insertCell(3).innerText = fileData.dealingAssistant;
+            newRow.insertCell(4).innerText = fileData.details;
+        }
+
+        window.onload = function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileName = urlParams.get("fileName") || "N/A";
+            const fileNo = urlParams.get("fileNo") || "N/A";
+            const issueDate = urlParams.get("issueDate") || "N/A";
+            const dealingAssistant = urlParams.get("dealingAssistant") || "N/A";
+            const details = urlParams.get("details") || "N/A";
+
+            document.getElementById("fileNameDisplay").textContent = fileName;
+            document.getElementById("fileNoDisplay").textContent = fileNo;
+            document.getElementById("issueDateDisplay").textContent = issueDate;
+            document.getElementById("dealingAssistantDisplay").textContent = dealingAssistant;
+            document.getElementById("detailsDisplay").textContent = details;
+
+            loadFileData();  // Load and display stored files in table
+        };
+    </script>
+</body>
+</html>
