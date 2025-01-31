@@ -55,67 +55,112 @@
     <p>Dealing Assistant: <span id="dealingAssistantDisplay"></span></p>
     <p>Details: <span id="detailsDisplay"></span></p>
 
-    <script>
-        const repoOwner = "Dibyenduchoudhury";  // Your GitHub username
-        const repoName = "Central-Register";
-        const filePath = "files.json";
-        const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+<script>
+    const repoOwner = "Dibyenduchoudhury";
+    const repoName = "Central-Register";
+    const filePath = "files.json";
+    const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
 
-        // Fetch and display file data
-        async function loadFileData() {
-            try {
-                const response = await fetch(apiUrl);
-                if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
+    document.getElementById('file-form').addEventListener('submit', async function (event) {
+        event.preventDefault();
 
-                const data = await response.json();
-                const decodedContent = atob(data.content).trim(); // Decode Base64 Content
+        const fileName = document.getElementById('fileName').value;
+        const fileNo = document.getElementById('fileNo').value;
+        const issueDate = document.getElementById('issueDate').value;
+        const dealingAssistant = document.getElementById('dealingAssistant').value;
+        const details = document.getElementById('details').value;
 
-                if (!decodedContent) {
-                    console.warn("files.json is empty!");
-                    return;
+        const newFileData = { fileName, fileNo, issueDate, dealingAssistant, details };
+        
+        const githubToken = "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";  // Replace with actual token
+        const apiUrl = `https://api.github.com/repos/Dibyenduchoudhury/Central-Register/contents/files.json`;
+
+        try {
+            const response = await fetch(apiUrl, {
+                headers: {
+                    "Authorization": `Bearer ${githubToken}`,
+                    "Accept": "application/vnd.github.v3+json"
                 }
+            });
 
-                let files = [];
-                try {
-                    files = JSON.parse(decodedContent);
-                } catch (error) {
-                    console.error("JSON Parsing Error:", error);
-                    alert("Error parsing JSON data.");
-                    return;
-                }
+            if (!response.ok) throw new Error(`GitHub API Error: ${response.status}`);
 
-                console.log("Parsed File Data:", files);
+            const data = await response.json();
+            const sha = data.sha;
 
-                // Display in Table
-                files.forEach(file => addFileToTable(file));
+            let existingFiles = JSON.parse(atob(data.content));
+            existingFiles.push(newFileData);
+            const updatedContent = btoa(JSON.stringify(existingFiles, null, 2));
 
-            } catch (error) {
-                console.error("Fetch Error:", error);
-                alert("An error occurred while fetching file data.");
+            const updateResponse = await fetch(apiUrl, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${githubToken}`,
+                    "Accept": "application/vnd.github.v3+json"
+                },
+                body: JSON.stringify({
+                    message: "Added new file record",
+                    content: updatedContent,
+                    sha: sha
+                })
+            });
+
+            if (!updateResponse.ok) throw new Error(`GitHub Update Error: ${updateResponse.status}`);
+
+            alert("File data successfully saved!");
+            addFileToTable(newFileData);
+            this.reset();
+
+        } catch (error) {
+            console.error("Error updating GitHub file:", error);
+            alert("Failed to update file on GitHub. Check console for details.");
+        }
+    });
+
+    async function loadFileData() {
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
+
+            const data = await response.json();
+            const decodedContent = atob(data.content).trim();
+
+            if (!decodedContent || decodedContent === "[]") {
+                console.warn("files.json is empty!");
+                document.getElementById('file-table').innerHTML += "<tr><td colspan='5'>No records found.</td></tr>";
+                return;
             }
+
+            let files = JSON.parse(decodedContent);
+            files.forEach(file => addFileToTable(file));
+
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            alert("An error occurred while fetching file data.");
         }
+    }
 
-        function addFileToTable(fileData) {
-            const table = document.getElementById('file-table').getElementsByTagName('tbody')[0];
-            const newRow = table.insertRow();
+    function addFileToTable(fileData) {
+        const table = document.getElementById('file-table').getElementsByTagName('tbody')[0];
+        const newRow = table.insertRow();
 
-            newRow.insertCell(0).innerText = fileData.fileName;
-            newRow.insertCell(1).innerText = fileData.fileNo;
-            newRow.insertCell(2).innerText = fileData.issueDate;
-            newRow.insertCell(3).innerText = fileData.dealingAssistant;
-            newRow.insertCell(4).innerText = fileData.details;
-        }
+        newRow.insertCell(0).innerText = fileData.fileName;
+        newRow.insertCell(1).innerText = fileData.fileNo;
+        newRow.insertCell(2).innerText = fileData.issueDate;
+        newRow.insertCell(3).innerText = fileData.dealingAssistant;
+        newRow.insertCell(4).innerText = fileData.details;
+    }
 
-        window.onload = function () {
-            const urlParams = new URLSearchParams(window.location.search);
-            document.getElementById("fileNameDisplay").textContent = urlParams.get("fileName") || "N/A";
-            document.getElementById("fileNoDisplay").textContent = urlParams.get("fileNo") || "N/A";
-            document.getElementById("issueDateDisplay").textContent = urlParams.get("issueDate") || "N/A";
-            document.getElementById("dealingAssistantDisplay").textContent = urlParams.get("dealingAssistant") || "N/A";
-            document.getElementById("detailsDisplay").textContent = urlParams.get("details") || "N/A";
+    window.onload = function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        document.getElementById("fileNameDisplay").textContent = urlParams.get("fileName") || "N/A";
+        document.getElementById("fileNoDisplay").textContent = urlParams.get("fileNo") || "N/A";
+        document.getElementById("issueDateDisplay").textContent = urlParams.get("issueDate") || "N/A";
+        document.getElementById("dealingAssistantDisplay").textContent = urlParams.get("dealingAssistant") || "N/A";
+        document.getElementById("detailsDisplay").textContent = urlParams.get("details") || "N/A";
 
-            loadFileData();
-        };
-    </script>
+        loadFileData();
+    };
+</script>
 </body>
 </html>
